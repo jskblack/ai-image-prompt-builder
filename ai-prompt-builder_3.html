@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>AI 風格詞典</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f4f8;--white:#ffffff;--surface:#e8edf3;--border:#d0d8e4;
+  --text:#1a2332;--text-dim:#5a6a7e;--text-faint:#9aaabb;
+  --nav-bg:#1e3a5f;--nav-active:#2d6bbf;--nav-text:#cce0ff;
+  --nav-w:84px;--header-h:50px;
+}
+html,body{height:100%;overflow:hidden;background:var(--nav-bg);
+  font-family:'Noto Sans TC',sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* ── SIDENAV ── */
+.sidenav{
+  width:var(--nav-w);background:var(--nav-bg);
+  display:flex;flex-direction:column;align-items:center;
+  padding:8px 0 84px;gap:2px;overflow-y:auto;overflow-x:hidden;
+  flex-shrink:0;scrollbar-width:none;z-index:10
+}
+.sidenav::-webkit-scrollbar{display:none}
+.nav-logo{
+  width:100%;text-align:center;padding:4px 4px 10px;
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+  color:rgba(255,255,255,0.25);letter-spacing:0.06em;
+  border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:4px;line-height:1.5
+}
+.nav-btn{
+  width:70px;padding:7px 3px;border:none;border-radius:10px;
+  background:transparent;color:var(--nav-text);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  transition:all 0.18s;position:relative;opacity:0.6;flex-shrink:0
+}
+.nav-btn .ni{
+  width:34px;height:34px;border-radius:9px;display:flex;
+  align-items:center;justify-content:center;font-size:17px;
+  background:rgba(255,255,255,0.07);transition:all 0.18s
+}
+.nav-btn .nl{font-size:10px;font-weight:500;text-align:center;line-height:1.3;white-space:pre-line}
+.nav-btn .nb{
+  position:absolute;top:3px;right:5px;background:#ff4757;color:#fff;
+  font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;
+  display:none;align-items:center;justify-content:center;padding:0 3px
+}
+.nav-btn .nb.show{display:flex}
+.nav-btn:hover{opacity:0.85}
+.nav-btn.active{opacity:1;background:rgba(255,255,255,0.1)}
+.nav-btn.active .ni{box-shadow:0 3px 10px rgba(0,0,0,0.3)}
+
+/* fixed prompt btn */
+.nav-prompt{
+  position:fixed;bottom:10px;left:7px;width:70px;padding:9px 4px;
+  border:2px solid rgba(255,255,255,0.18);border-radius:12px;
+  background:rgba(45,107,191,0.35);color:#fff;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  transition:all 0.18s;z-index:20
+}
+.nav-prompt .ni{font-size:19px}
+.nav-prompt .nl{font-size:9px;font-weight:700;text-align:center;line-height:1.3}
+.nav-prompt .sc{
+  background:#ff4757;color:#fff;font-size:10px;font-weight:700;
+  padding:1px 6px;border-radius:8px;display:none
+}
+.nav-prompt .sc.show{display:block}
+.nav-prompt:hover{background:rgba(45,107,191,0.6);border-color:rgba(255,255,255,0.35)}
+
+/* ── MAIN ── */
+.main{
+  flex:1;display:flex;flex-direction:column;background:var(--bg);
+  overflow:hidden;border-radius:16px 0 0 16px
+}
+
+/* cat header */
+.cat-hdr{
+  height:var(--header-h);background:var(--white);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 14px;gap:9px;flex-shrink:0
+}
+.cat-bar{width:4px;height:22px;border-radius:3px;flex-shrink:0}
+.cat-title{font-size:14px;font-weight:700;color:var(--text);line-height:1.2}
+.cat-sub{font-size:10px;color:var(--text-faint)}
+.cat-info{
+  margin-left:auto;font-size:11px;color:var(--text-dim);
+  background:var(--surface);padding:2px 8px;border-radius:10px;white-space:nowrap
+}
+.cat-info strong{color:var(--nav-active)}
+
+/* group tabs */
+.gtabs{
+  display:flex;gap:5px;padding:7px 10px;background:var(--white);
+  border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0;scrollbar-width:none
+}
+.gtabs::-webkit-scrollbar{display:none}
+.gtab{
+  padding:4px 11px;border-radius:20px;border:1px solid var(--border);
+  background:var(--bg);font-size:11px;font-weight:500;color:var(--text-dim);
+  cursor:pointer;white-space:nowrap;transition:all 0.15s;flex-shrink:0
+}
+.gtab.active{background:var(--nav-active);border-color:var(--nav-active);color:#fff}
+
+/* search */
+.sbar{
+  display:flex;align-items:center;gap:7px;padding:7px 10px;
+  background:var(--white);border-bottom:1px solid var(--border);flex-shrink:0
+}
+.sbar input{
+  flex:1;border:1px solid var(--border);border-radius:18px;padding:5px 13px;
+  font-size:12px;font-family:'Noto Sans TC',sans-serif;background:var(--bg);
+  color:var(--text);outline:none
+}
+.sbar input:focus{border-color:var(--nav-active)}
+.sbar input::placeholder{color:var(--text-faint)}
+.btn-rnd{
+  padding:5px 11px;border-radius:18px;border:1px solid var(--border);
+  background:var(--bg);font-size:11px;color:var(--text-dim);cursor:pointer;
+  white-space:nowrap;transition:all 0.15s;flex-shrink:0
+}
+.btn-rnd:hover{border-color:var(--nav-active);color:var(--nav-active)}
+
+/* card grid */
+.grid{
+  flex:1;overflow-y:auto;padding:8px 8px 80px;
+  display:grid;grid-template-columns:1fr 1fr;gap:7px;align-content:start;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent
+}
+.grid::-webkit-scrollbar{width:3px}
+.grid::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* style card */
+.card{
+  border-radius:11px;overflow:hidden;background:var(--white);
+  border:2px solid transparent;cursor:pointer;transition:all 0.18s;
+  position:relative;box-shadow:0 1px 4px rgba(0,0,0,0.07)
+}
+.card:active{transform:scale(0.97)}
+.card.sel{border-color:var(--c-active,var(--nav-active));box-shadow:0 0 0 2px rgba(45,107,191,0.12),0 2px 8px rgba(0,0,0,0.1)}
+.card.sel::after{
+  content:'✓';position:absolute;top:5px;right:5px;
+  width:19px;height:19px;border-radius:50%;
+  background:var(--c-active,var(--nav-active));color:#fff;
+  font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2
+}
+.card-img{width:100%;aspect-ratio:4/3;overflow:hidden;background:var(--surface);position:relative}
+.card-img img{
+  width:100%;height:100%;object-fit:cover;display:block;
+  opacity:0;transition:opacity 0.35s,transform 0.3s
+}
+.card-img img.ok{opacity:1}
+.card:hover .card-img img{transform:scale(1.04)}
+.card-ph{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-size:26px;opacity:0.35;
+  background:linear-gradient(135deg,var(--surface) 0%,var(--border) 100%)
+}
+.card-body{padding:7px 8px 8px}
+.card-en{
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;
+  color:var(--text);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.card-zh{
+  font-size:10px;color:var(--text-dim);margin-top:2px;line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden
+}
+.empty-res{
+  grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--text-faint)
+}
+.empty-res .ei{font-size:38px;margin-bottom:10px}
+.empty-res p{font-size:12px}
+
+/* ── SHEET ── */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;
+  opacity:0;pointer-events:none;transition:opacity 0.25s
+}
+.overlay.show{opacity:1;pointer-events:all}
+.sheet{
+  position:fixed;bottom:0;left:0;right:0;z-index:101;background:var(--white);
+  border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;
+  transform:translateY(100%);transition:transform 0.3s cubic-bezier(0.34,1.2,0.64,1);
+  box-shadow:0 -8px 40px rgba(0,0,0,0.2)
+}
+.sheet.open{transform:translateY(0)}
+.sh-handle{width:34px;height:4px;background:var(--border);border-radius:2px;margin:9px auto 0;flex-shrink:0}
+.sh-hdr{padding:11px 16px 9px;border-bottom:1px solid var(--border);flex-shrink:0;position:relative}
+.sh-title{font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px}
+.sh-sub{font-size:11px;color:var(--text-faint);margin-top:2px}
+.sh-close{
+  position:absolute;top:10px;right:14px;width:26px;height:26px;border:none;
+  background:var(--surface);border-radius:50%;font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;color:var(--text-dim)
+}
+.sh-body{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:7px}
+.sh-empty{text-align:center;padding:36px 20px;color:var(--text-faint)}
+.sh-empty .ei{font-size:34px;margin-bottom:8px}
+.sh-empty p{font-size:12px;line-height:1.6}
+.sel-item{
+  display:flex;align-items:center;gap:7px;padding:7px 9px;
+  background:var(--bg);border-radius:9px;border:1px solid var(--border);
+  animation:fadeUp 0.15s ease
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.sel-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sel-en{font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sel-zh{font-size:10px;color:var(--text-dim);flex-shrink:0;max-width:72px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sel-rm{background:none;border:none;color:var(--text-faint);font-size:14px;cursor:pointer;padding:0 2px;transition:color 0.1s;flex-shrink:0}
+.sel-rm:hover{color:#ff4757}
+
+/* prompt box */
+.sh-prompt{flex-shrink:0;padding:10px 14px;border-top:1px solid var(--border)}
+.pt-label{font-size:9.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:5px}
+.pt-box{
+  background:#1a2332;border-radius:9px;padding:9px 11px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;color:#7ec8ff;
+  line-height:1.7;word-break:break-all;min-height:44px;max-height:76px;overflow-y:auto
+}
+.pt-box:empty::before{content:'尚未選擇任何詞彙...';color:#3a4a5e;font-style:italic}
+
+/* sheet actions */
+.sh-actions{flex-shrink:0;display:flex;gap:7px;padding:9px 14px 18px}
+.btn-copy{
+  flex:1;padding:12px;background:var(--nav-active);border:none;border-radius:11px;
+  color:#fff;font-size:13px;font-weight:700;font-family:'Noto Sans TC',sans-serif;
+  cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:5px
+}
+.btn-copy:hover{background:#1a5aa8}
+.btn-copy.copied{background:#2ea86a}
+.btn-clr{
+  padding:12px 14px;background:var(--bg);border:1px solid var(--border);
+  border-radius:11px;color:var(--text-dim);font-size:12px;font-weight:600;
+  font-family:'Noto Sans TC',sans-serif;cursor:pointer;transition:all 0.15s
+}
+.btn-clr:hover{border-color:#ff4757;color:#ff4757}
+
+/* favs */
+.sh-fav{flex-shrink:0;padding:0 14px 6px;border-top:1px solid var(--border)}
+.fav-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 0 5px}
+.fav-t{font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint)}
+.btn-fsave{
+  font-size:10.5px;padding:3px 9px;border:1px solid var(--border);border-radius:7px;
+  background:none;color:var(--text-dim);cursor:pointer;font-family:'Noto Sans TC',sans-serif;transition:all 0.15s
+}
+.btn-fsave:hover{border-color:var(--nav-active);color:var(--nav-active)}
+.fav-list{display:flex;flex-direction:column;gap:3px;max-height:76px;overflow-y:auto}
+.fav-row{display:flex;align-items:center;gap:5px;padding:4px 7px;border-radius:7px;cursor:pointer;transition:background 0.1s}
+.fav-row:hover{background:var(--surface)}
+.fav-rn{flex:1;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fav-rd{background:none;border:none;color:var(--text-faint);font-size:12px;cursor:pointer;padding:0 2px}
+.fav-rd:hover{color:#ff4757}
+.fav-em{font-size:10.5px;color:var(--text-faint);padding:4px 7px}
+
+/* toast */
+.toast{
+  position:fixed;bottom:76px;left:50%;transform:translateX(-50%) translateY(8px);
+  background:#1a2332;color:#fff;padding:8px 16px;border-radius:18px;
+  font-size:12px;opacity:0;transition:all 0.2s;pointer-events:none;z-index:200;
+  white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.3)
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(min-width:600px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:900px){.grid{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="sidenav" id="sidenav">
+    <div class="nav-logo">AI<br>風格<br>詞典</div>
+  </nav>
+
+  <main class="main">
+    <div class="cat-hdr">
+      <div class="cat-bar" id="catBar"></div>
+      <div>
+        <div class="cat-title" id="catTitle">—</div>
+        <div class="cat-sub" id="catSub">—</div>
+      </div>
+      <div class="cat-info" id="catInfo">已選 <strong>0</strong></div>
+    </div>
+    <div class="gtabs" id="gtabs"></div>
+    <div class="sbar">
+      <input type="text" id="searchInput" placeholder="搜尋詞彙（中文或英文）...">
+      <button class="btn-rnd" onclick="addRandom()">🎲 隨機</button>
+    </div>
+    <div class="grid" id="grid"></div>
+  </main>
+</div>
+
+<button class="nav-prompt" onclick="openSheet()">
+  <div class="ni">📋</div>
+  <div class="nl">詞彙指令<br>產生器</div>
+  <div class="sc" id="navCnt"></div>
+</button>
+
+<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="sh-handle"></div>
+  <div class="sh-hdr">
+    <div class="sh-title">📋 詞彙指令產生器</div>
+    <div class="sh-sub" id="shSub">尚未選擇詞彙</div>
+    <button class="sh-close" onclick="closeSheet()">✕</button>
+  </div>
+  <div class="sh-body" id="shBody">
+    <div class="sh-empty" id="shEmpty">
+      <div class="ei">✦</div>
+      <p>點選左側風格卡片<br>加入你的 Prompt 組合</p>
+    </div>
+  </div>
+  <div class="sh-prompt">
+    <div class="pt-label">Prompt 預覽</div>
+    <div class="pt-box" id="ptBox"></div>
+  </div>
+  <div class="sh-actions">
+    <button class="btn-copy" id="copyBtn" onclick="copyPrompt()">📋 複製 Prompt</button>
+    <button class="btn-clr" onclick="clearAll()">清除</button>
+  </div>
+  <div class="sh-fav">
+    <div class="fav-hdr">
+      <div class="fav-t">收藏組合</div>
+      <button class="btn-fsave" onclick="saveFav()">＋ 儲存</button>
+    </div>
+    <div class="fav-list" id="favList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── DATA ───────────────────────────────────
+const CATS = [
+  {id:'medium',icon:'🖌️',name:'作畫方式',color:'#4a7eff',sub:'繪畫媒材 · 材質',
+   groups:[
+    {l:'繪畫媒材',t:[
+      {e:'pencil',z:'鉛筆畫'},{e:'charcoal',z:'炭筆畫'},{e:'color pencil',z:'彩色鉛筆'},
+      {e:'rollerball pen',z:'原子筆'},{e:'chalk',z:'粉筆'},{e:'crayon',z:'蠟筆'},
+      {e:'sketch',z:'草圖'},{e:'hand drawing',z:'手繪'},{e:'doodle',z:'塗鴉'},
+      {e:'illustration',z:'插畫'},{e:'marker pen',z:'麥克筆'},{e:'acrylic painting',z:'壓克力'},
+      {e:'watercolor painting',z:'水彩畫'},{e:'oil painting',z:'油畫'},
+      {e:'Printmaking',z:'版畫'},{e:'Woodcut',z:'木刻版畫'},
+      {e:'ink drawing',z:'水墨畫'},{e:'splashed ink',z:'潑墨畫'},
+      {e:'chinese ink drawing',z:'中國水墨'},{e:'Gongbi painting',z:'工筆畫'},
+      {e:'clean outline drawing',z:'乾淨外框'},{e:'one line drawing',z:'單線外框'},
+    ]},
+    {l:'材料與材質',t:[
+      {e:'paper art',z:'紙雕藝術'},{e:'pop-up book',z:'立體紙雕'},
+      {e:'paper cutting',z:'剪紙藝術'},{e:'origami art',z:'摺紙藝術'},
+      {e:'graffiti',z:'街頭塗鴉'},{e:'stained glass',z:'彩繪玻璃'},
+      {e:'mosaic',z:'馬賽克'},{e:'3D mosaic',z:'立體馬賽克'},
+      {e:'Low poly',z:'低多邊形'},{e:'pixel art',z:'像素點陣'},
+      {e:'wood carving',z:'木雕'},{e:'stone carving',z:'石雕'},
+      {e:'jade material',z:'玉'},{e:'ceramics material',z:'陶瓷'},
+      {e:'metal arts',z:'金屬'},{e:'glass plastic arts',z:'玻璃/琉璃'},
+      {e:'sand sculpture',z:'沙雕'},{e:'Play-Doh clay',z:'兒童黏土'},
+      {e:'lego',z:'樂高'},{e:'plastic doll',z:'塑膠公仔'},
+      {e:'felt doll',z:'羊毛氈娃娃'},{e:'Bas-relief',z:'浮雕'},
+      {e:'Blacklight Painting',z:'黑光畫'},{e:'ASCII art',z:'ASCII 圖'},
+      {e:'Alebrije',z:'墨西哥神獸木雕'},{e:'Anatomical',z:'解剖圖'},
+      {e:'Infographic',z:'資訊圖'},
+    ]},
+  ]},
+  {id:'photography',icon:'📷',name:'攝影方式',color:'#2196f3',sub:'攝影風格 · 鏡頭 · 光線',
+   groups:[
+    {l:'攝影基礎',t:[
+      {e:'photo',z:'照片'},{e:'photography',z:'攝影'},{e:'life photo',z:'生活照'},
+      {e:'group photo',z:'團體照'},{e:'group selfie photo',z:'自拍團體照'},
+      {e:'selfie photo',z:'自拍照'},{e:'portrait photography',z:'人像攝影'},
+      {e:'sports photography',z:'運動攝影'},{e:'still life photo',z:'靜物攝影'},
+    ]},
+    {l:'相機風格',t:[
+      {e:'DSLR style',z:'數位單眼'},{e:'Polaroid style',z:'拍立得'},
+      {e:'gopro style',z:'GoPro廣角'},{e:'Fujifilm superia style',z:'富士底片'},
+      {e:'LOMO style',z:'LOMO相機'},{e:'B/W style',z:'黑白照片'},
+      {e:'movie style',z:'電影風'},{e:'cinematic photo style',z:'劇照風'},
+      {e:'vintage photo style',z:'復古照片'},{e:'antique photo style',z:'仿古照片'},
+      {e:'Holga photography',z:'Holga相機'},{e:'Calotype print',z:'紙基負片(1841)'},
+      {e:'Albumen print',z:'蛋白映像(1847)'},
+    ]},
+    {l:'鏡頭效果',t:[
+      {e:'macro lens',z:'微距鏡頭'},{e:'wide angle lens',z:'廣角鏡頭'},
+      {e:'fish eye lens',z:'魚眼鏡頭'},{e:'tilt shift lens',z:'移軸鏡頭'},
+      {e:'long focal length lens',z:'望遠鏡頭'},{e:'bokeh',z:'散景光暈'},
+      {e:'lens flare',z:'鏡頭眩光'},{e:'multiple exposure',z:'重複曝光'},
+      {e:'panning',z:'平移拍攝'},{e:'motion blur',z:'動態模糊'},
+      {e:'vignetting',z:'鏡頭暗角'},
+    ]},
+    {l:'光線與畫質',t:[
+      {e:'magic hour',z:'魔幻時刻'},{e:'golden hour',z:'黃金時刻'},
+      {e:'blue hour',z:'藍色時刻'},{e:'ambient light',z:'環境光'},
+      {e:'hard light',z:'硬光'},{e:'soft light',z:'軟光/柔光'},
+      {e:'back light',z:'背光/剪影'},{e:'rim light',z:'輪廓光'},
+      {e:'HDR',z:'高動態範圍'},{e:'4K HDR',z:'4K HDR'},
+      {e:'very realistic',z:'非常逼真'},{e:'very detailed',z:'非常多細節'},
+      {e:'high resolution',z:'高分辨率'},{e:'8K',z:'8K畫質'},
+    ]},
+  ]},
+  {id:'view',icon:'🎥',name:'畫面角度',color:'#00bcd4',sub:'取景距離 · 角度 · 特殊',
+   groups:[
+    {l:'畫面遠近',t:[
+      {e:'facial features extreme close up',z:'臉部五官特寫'},
+      {e:'face close-up',z:'臉部特寫'},{e:'face shot',z:'頭到胸上緣'},
+      {e:'chest shot',z:'半身照'},{e:'full body shot',z:'全身照'},
+      {e:'far away shot',z:'遠景'},
+    ]},
+    {l:'拍攝角度',t:[
+      {e:'front view',z:'正面'},{e:'side view',z:'側面'},
+      {e:'low angle view',z:'低角度↑'},{e:'high angle view',z:'高角度↓'},
+      {e:'bird view',z:'鳥瞰'},{e:'satellite view',z:'衛星視角'},
+      {e:'the first person view',z:'第一人稱'},{e:'the third person view',z:'第三人稱'},
+    ]},
+    {l:'特殊效果',t:[
+      {e:'product view',z:'產品照'},{e:'knolling',z:'開箱展示'},
+      {e:'microscope view',z:'顯微鏡效果'},{e:'electron microscope',z:'電子顯微鏡'},
+      {e:'X-ray view',z:'X光片'},{e:'360 degrees photo',z:'360度照片'},
+      {e:'360 degrees photo to tiny planet',z:'小星球效果'},
+      {e:'style of 2000s',z:'2000年代風格'},{e:'style of 1900s',z:'1900年代風格'},
+    ]},
+  ]},
+  {id:'art',icon:'🏛️',name:'繪畫風格',color:'#9c27b0',sub:'藝術流派 · 歷史風格',
+   groups:[
+    {l:'史前 & 古代',t:[
+      {e:'Lascaux',z:'拉斯科洞窟壁畫'},{e:'hieroglyphs',z:'象形文字畫'},
+      {e:'petroglyph art',z:'岩石刻畫'},{e:'ancient Egyptian Art',z:'古埃及藝術'},
+    ]},
+    {l:'文藝復興',t:[
+      {e:'Renaissance',z:'文藝復興'},{e:'Baroque art',z:'巴洛克'},
+      {e:'Romanticism',z:'浪漫主義'},{e:'Classicism',z:'古典主義'},
+      {e:'Rococo',z:'洛可可'},{e:'Neoclassicism',z:'新古典主義'},
+    ]},
+    {l:'現代藝術',t:[
+      {e:'Impressionnisme',z:'印象派'},{e:'Post-Impressionism',z:'後印象派'},
+      {e:'Surrealism',z:'超現實主義'},{e:'Abstract Expressionism',z:'抽象表現主義'},
+      {e:'Cubism',z:'立體主義'},{e:'Symbolism',z:'象徵主義'},
+      {e:'Fauvism',z:'野獸派'},{e:'Pointillism',z:'點描畫派'},
+      {e:'pop art',z:'普普藝術'},{e:'Realism',z:'寫實主義'},
+      {e:'Dadaism',z:'達達主義'},{e:'OP Art',z:'歐普藝術'},
+      {e:'Futurismo',z:'未來主義'},{e:'Expressionnisme',z:'表現主義'},
+      {e:'Postmodernism',z:'後現代主義'},
+    ]},
+    {l:'當代藝術',t:[
+      {e:'Minimalism',z:'極簡主義'},{e:'Maximalism',z:'極繁主義'},
+      {e:'Cyber Art',z:'Cyber Art'},{e:'Neo-Geometric',z:'新幾何主義'},
+      {e:'poster art',z:'海報藝術'},{e:'street art',z:'街頭藝術'},
+      {e:'New media art',z:'新媒體藝術'},{e:'Contemporary art',z:'當代藝術'},
+    ]},
+    {l:'日本藝術',t:[
+      {e:'Japanese printmaking style',z:'日本版畫'},
+      {e:'Japanese Woodblock Printmaking style',z:'木刻版畫'},
+      {e:'Ukiyo-e',z:'浮世繪'},{e:'Yamato-e',z:'大和繪'},
+    ]},
+  ]},
+  {id:'artists',icon:'🎨',name:'藝術家',color:'#e91e63',sub:'大師畫家 · 藝術風格',
+   groups:[
+    {l:'現代藝術家',t:[
+      {e:'Leonardo da Vinci',z:'達文西'},{e:'Raphael',z:'拉斐爾'},
+      {e:'Michelangelo',z:'米開朗基羅'},{e:'Giovanni Bellini',z:'貝里尼'},
+      {e:'Goya',z:'哥雅'},{e:'Millet',z:'米勒'},{e:'Renoir',z:'雷諾瓦'},
+      {e:'Monet',z:'莫內'},{e:'Degas',z:'竇加'},{e:'Cezanne',z:'賽尚'},
+      {e:'Gauguin',z:'高更'},{e:'Vincent van Gogh',z:'梵谷'},
+      {e:'Seurat',z:'秀拉'},{e:'Rousseau',z:'盧梭'},{e:'Matisse',z:'馬諦斯'},
+      {e:'Munch',z:'孟克'},{e:'Miro',z:'米羅'},{e:'Picasso',z:'畢卡索'},
+      {e:'Marc Chagall',z:'夏卡爾'},{e:'Alfons Maria Mucha',z:'慕夏'},
+      {e:'Dali',z:'達利'},{e:'Magritte',z:'馬格麗特'},
+    ]},
+    {l:'當代藝術家',t:[
+      {e:'Warhol',z:'安迪沃霍爾'},{e:'Frida Kahlo',z:'芙烈達卡蘿'},
+      {e:'Andi Fischer',z:'安迪費雪（錯視）'},{e:'Eric Carle',z:'艾瑞卡爾'},
+      {e:'Joan Cornellà Vázquez',z:'胡安科爾內利亞'},{e:'Leonora Carrington',z:'卡林頓'},
+    ]},
+    {l:'日本藝術家',t:[
+      {e:'Katsushika Hokusai',z:'葛飾北齋'},{e:'Utamaro',z:'喜多川歌麿'},
+      {e:'Tadanori Yokoo',z:'橫尾忠則'},{e:'Tomoko Nagao',z:'長尾智子'},
+      {e:'Nara Yoshitomo',z:'奈良美智'},{e:'Kusama Yayoi',z:'草間彌生'},
+      {e:'Murakami Takashi',z:'村上隆'},{e:'Ninagawa Mika',z:'蜷川實花'},
+    ]},
+  ]},
+  {id:'illustration',icon:'✏️',name:'插畫家',color:'#ff5722',sub:'可愛童趣 · 色塊 · 詭異奇幻',
+   groups:[
+    {l:'可愛童趣',t:[
+      {e:'Eric Carle',z:'拼貼色塊童書風'},{e:'Laurel Burch',z:'豐富色彩民俗'},
+      {e:'Allie Brosh',z:'粗糙幽默漫畫'},{e:'Shel Silverstein',z:'黑白簡筆詩意'},
+      {e:'Axel Scheffler',z:'溫暖英式童書'},{e:'Jane Newland',z:'細膩柔和童書'},
+      {e:'Liniers',z:'簡約溫柔漫畫'},{e:'Joey Chou',z:'幾何色塊可愛'},
+      {e:'Quentin Blake',z:'隨性線條英式'},{e:'Mary Blair',z:'迪士尼復古色塊'},
+      {e:'Madhubani painting',z:'印度民俗藝術'},{e:'Naive art',z:'素人藝術'},
+    ]},
+    {l:'色塊線稿',t:[
+      {e:'Josh Agle',z:'復古Shag插畫'},{e:'Tex Avery',z:'誇張卡通動作'},
+      {e:'Charles Burns',z:'黑白對比漫畫'},{e:'Butcher Billy',z:'復古流行拼貼'},
+      {e:'Noma Bar',z:'極簡負空間設計'},{e:'Dan Clowes',z:'獨立漫畫怪誕'},
+      {e:'Saul Steinberg',z:'線條哲思插畫'},{e:'Andy Singer',z:'政治黑色幽默'},
+    ]},
+    {l:'詭異奇幻',t:[
+      {e:'Tim Burton',z:'哥德黑暗奇幻'},{e:'Charles Addams',z:'黑色幽默哥德'},
+      {e:'Edward Gorey',z:'維多利亞黑白陰鬱'},{e:'Edward Bawden',z:'版畫裝飾風'},
+      {e:'Angela Barrett',z:'細緻陰鬱童話'},{e:'Nicoletta Ceccoli',z:'夢幻詭異童話'},
+      {e:'Stephen Gammell',z:'恐怖塗抹質感'},{e:'Tom Gauld',z:'簡約科幻文學'},
+      {e:'Sidney Sime',z:'世紀末幻想插畫'},{e:'Roland Topor',z:'超現實黑色幽默'},
+      {e:'Christian Schloe',z:'夢幻超現實數位'},{e:'Gabriel Pacheco',z:'細膩哥德童話'},
+      {e:'Gris Grimly',z:'可愛黑暗童書'},{e:'John Kenn Mortensen',z:'便利貼黑暗怪獸'},
+      {e:'John Bauer',z:'北歐神話奇幻'},{e:'Aubrey Beardsley',z:'新藝術黑白裝飾'},
+      {e:'Andy Kehoe',z:'森林奇幻發光'},{e:'Jon Klassen',z:'極簡冷幽默童書'},
+      {e:'Anna and Elena Balbusso',z:'精緻裝飾插畫'},{e:'Sophie Blackall',z:'溫暖懷舊水彩'},
+      {e:'Anton Semenov',z:'哲思超現實'},{e:'Amy Earles',z:'女性超現實插畫'},
+      {e:'Stanley Donwood',z:'廢土末日版畫'},{e:'Gerald Scarfe',z:'誇張政治諷刺'},
+    ]},
+  ]},
+  {id:'illustration2',icon:'🖍️',name:'插畫家 2',color:'#ff9800',sub:'精細 · 漫畫 · 寫實 · 意境',
+   groups:[
+    {l:'精細插畫',t:[
+      {e:'Alison Bechdel',z:'圖像小說紀實'},{e:'David Aja',z:'幾何分割漫畫'},
+      {e:'Rafael Albuquerque',z:'暗色超英雄'},{e:'Mitsumasa Anno',z:'精細錯視童書'},
+      {e:'Jasmine Becket-Griffith',z:'大眼夢幻奇幻'},{e:'Drew Brophy',z:'鮮豔海浪塗鴉'},
+      {e:'Hiromu Arakawa',z:'鋼鍊日式漫畫'},{e:'Elsa Beskow',z:'北歐自然童書'},
+      {e:'M. C. Escher',z:'數學錯視版畫'},{e:'J. Scott Campbell',z:'性感美式漫畫'},
+      {e:'Hayao Miyazaki',z:'宮崎駿吉卜力'},{e:'Geof Darrow',z:'極細節超密插畫'},
+      {e:'Jonny Duddle',z:'可愛奇幻童書'},{e:'Tiago Hoisel',z:'3D超誇張寫實'},
+      {e:'Chris Dyer',z:'迷幻靈性塗鴉'},
+    ]},
+    {l:'漫畫風格',t:[
+      {e:'Sarah Andersen',z:'女性日常自嘲'},{e:'Mike Allred',z:'復古普普超英雄'},
+      {e:'Kate Beaton',z:'歷史幽默漫畫'},{e:'Herge',z:'丁丁歐式清線條'},
+      {e:'Charley Harper',z:'幾何自然插畫'},{e:'Matt Groening',z:'辛普森黃色卡通'},
+      {e:'Goro Fujita',z:'溫暖3D童書'},{e:'Darwyn Cooke',z:'復古美式漫畫'},
+      {e:'Skottie Young',z:'可愛變形漫威'},{e:'Brian Kesinger',z:'維多利亞章魚幽默'},
+      {e:'Dav Pilkey',z:'兒童搞笑塗鴉'},{e:'Randolph Caldecott',z:'19C英式插畫'},
+      {e:'Gemma Correll',z:'自嘲日常插畫'},
+    ]},
+    {l:'寫實風格',t:[
+      {e:'Guy Billout',z:'超現實靜謐插畫'},{e:'Enoch Bolles',z:'1930年代女性海報'},
+      {e:'John Philip Falter',z:'美式雜誌封面'},{e:'Milton Caniff',z:'黑白電影感漫畫'},
+      {e:'Leonetto Cappiello',z:'早期廣告海報'},{e:'Marc Davis',z:'迪士尼角色設計'},
+      {e:'Gary Larson',z:'理工黑色幽默'},{e:'Mort Drucker',z:'諷刺雜誌寫實'},
+      {e:'Hal Foster',z:'史詩線條冒險'},
+    ]},
+    {l:'意境幻想',t:[
+      {e:'Alessandro Gottardo',z:'極簡意境插畫'},{e:'Eiko Ojala',z:'紙雕剪影光影'},
+      {e:'Ivan Bilibin',z:'俄羅斯民間故事'},{e:'Ernst Haeckel',z:'19C生物精細插畫'},
+      {e:'Wayne Barlowe',z:'暗黑地獄幻想'},{e:'Edmund Dulac',z:'東方奇幻裝飾'},
+      {e:'Pascale Campion',z:'溫暖日常光影'},{e:'Kim Jung Gi',z:'即興超細節墨線'},
+      {e:'Tove Jansson',z:'嚕嚕米北歐童話'},{e:'Oliver Jeffers',z:'現代簡約童書'},
+      {e:'Dr. Seuss',z:'奇幻誇張繪本'},{e:'Raymond Briggs',z:'柔和彩色鉛筆'},
+      {e:'Dorothy Lathrop',z:'細緻奇幻鉛筆'},{e:'Ida Rentoul Outhwaite',z:'澳洲夢幻仙子'},
+      {e:'Brian Despain',z:'蒸汽龐克幻想'},{e:'Thomas Ascott',z:'精緻奇幻插畫'},
+      {e:'Terry Dodson',z:'流暢女性超英雄'},{e:'David Downton',z:'時尚速寫插畫'},
+      {e:'Emek',z:'迷幻音樂海報'},{e:'Frank Cho',z:'精緻叢林冒險'},
+    ]},
+  ]},
+  {id:'cartoon',icon:'🎭',name:'卡通漫畫',color:'#4caf50',sub:'動畫公司 · 卡通 · 日本動漫',
+   groups:[
+    {l:'基本詞彙',t:[
+      {e:'2D cartoon',z:'2D卡通'},{e:'3D cartoon',z:'3D卡通'},
+      {e:'2D animation',z:'2D動畫'},{e:'3D animation',z:'3D動畫'},
+      {e:'American comic book',z:'美式漫畫'},{e:'Manga',z:'日式漫畫'},
+    ]},
+    {l:'動畫公司',t:[
+      {e:'Pixar Animation',z:'皮克斯動畫'},{e:'DreamWorks Animation',z:'夢工廠'},
+      {e:'Walt Disney Animation',z:'迪士尼'},{e:'Nickelodeon Animation',z:'尼克羅迪恩'},
+      {e:'Marvel Animation',z:'漫威動畫'},{e:'Warner Bros. Animation',z:'華納兄弟'},
+      {e:'Ghibli Studio',z:'吉卜力'},{e:'Toei Animation',z:'東映動畫'},
+      {e:'Kyoto Animation',z:'京都動畫'},{e:'Ufotable Animation',z:'ufotable'},
+    ]},
+    {l:'卡通作品',t:[
+      {e:'SpongeBob',z:'海綿寶寶'},{e:'Mickey Mouse',z:'米老鼠'},
+      {e:'The Simpsons',z:'辛普森家族'},{e:'Dragon Ball',z:'七龍珠'},
+      {e:'Doraemon',z:'哆啦A夢'},{e:'Astro Boy',z:'原子小金剛'},
+      {e:'Sailor Moon',z:'美少女戰士'},{e:'hunter x hunter',z:'獵人'},
+      {e:'kimetsu no Yaiba',z:'鬼滅之刃'},{e:'One Piece',z:'海賊王'},
+      {e:'Akira',z:'阿基拉'},{e:"JoJo's Bizarre Adventure",z:'JoJo奇幻冒險'},
+    ]},
+  ]},
+  {id:'special',icon:'⭐',name:'特色風格',color:'#607d8b',sub:'像素 · 設計 · 商品結構',
+   groups:[
+    {l:'Pixel Art',t:[
+      {e:'2D pixel art',z:'2D像素圖'},{e:'Isometric pixel art',z:'等距像素圖'},
+      {e:'16-bit pixel art',z:'16-bit像素遊戲'},{e:'8-bit pixel art',z:'8-bit像素遊戲'},
+      {e:'2D Pixel Art Game Character Sprites',z:'角色分解圖'},
+      {e:'2D Pixel Art Game Assets Sprite',z:'場景拆解圖'},
+    ]},
+    {l:'商品結構',t:[
+      {e:'manual of',z:'筆記本風格'},{e:'Encyclopedia of',z:'百科全書風格'},
+      {e:'3D Model Exploded View',z:'3D分解圖'},{e:'knolling',z:'開箱照'},
+      {e:'analytic drawing',z:'分析圖'},{e:'diagrammatic drawing',z:'示意圖'},
+      {e:'character lego',z:'樂高人物'},{e:'character toy',z:'人形玩具'},
+    ]},
+    {l:'平面/室內設計',t:[
+      {e:'mascot logo',z:'吉祥物Logo'},{e:'emblem logo',z:'徽章Logo'},
+      {e:'Minimal Line logo',z:'簡單線條Logo'},{e:'Lettermark Logo',z:'文字型Logo'},
+      {e:'2D floor plan',z:'2D室內設計圖'},{e:'3D floor plan',z:'3D室內設計圖'},
+      {e:'outline of 2D floor plan',z:'2D外框線設計圖'},
+      {e:'pixel art of 2D floor plan',z:'2D像素設計圖'},
+    ]},
+  ]},
+];
+
+// ─── IMAGE SEED MAP ──────────────────────────
+const SEED = {};
+let si = 10;
+CATS.forEach(cat => {
+  cat.groups.forEach(g => {
+    g.t.forEach(tag => { SEED[tag.e] = si; si += 11; });
+  });
+});
+
+function imgUrl(en) {
+  return `https://picsum.photos/seed/${SEED[en]||100}/400/300`;
+}
+
+// ─── STATE ───────────────────────────────────
+let activeCat = CATS[0].id;
+let activeGrp = 0;   // -1 = all
+let selected = [];   // {e, z, catId, color}
+let favs = JSON.parse(localStorage.getItem('aipb3_favs')||'[]');
+let q = '';
+
+// ─── NAV ─────────────────────────────────────
+function renderNav() {
+  const nav = document.getElementById('sidenav');
+  const logo = nav.querySelector('.nav-logo');
+  nav.innerHTML = '';
+  nav.appendChild(logo);
+  CATS.forEach(cat => {
+    const cnt = selected.filter(s => s.catId === cat.id).length;
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn' + (cat.id === activeCat ? ' active' : '');
+    btn.innerHTML = `
+      <div class="ni" style="${cat.id===activeCat?`background:${cat.color};box-shadow:0 3px 10px ${cat.color}55`:''}">${cat.icon}</div>
+      <div class="nl">${cat.name}</div>
+      <div class="nb ${cnt>0?'show':''}">${cnt}</div>`;
+    btn.onclick = () => switchCat(cat.id);
+    nav.appendChild(btn);
+  });
+}
+
+function switchCat(id) {
+  activeCat = id; activeGrp = 0; q = '';
+  document.getElementById('searchInput').value = '';
+  renderNav(); renderHeader(); renderTabs(); renderCards();
+}
+
+// ─── HEADER ──────────────────────────────────
+function renderHeader() {
+  const cat = CATS.find(c => c.id === activeCat);
+  document.getElementById('catBar').style.background = cat.color;
+  document.getElementById('catTitle').textContent = cat.name;
+  document.getElementById('catSub').textContent = cat.sub;
+  const cnt = selected.filter(s => s.catId === activeCat).length;
+  document.getElementById('catInfo').innerHTML = `已選 <strong>${cnt}</strong>`;
+}
+
+// ─── GROUP TABS ──────────────────────────────
+function renderTabs() {
+  const cat = CATS.find(c => c.id === activeCat);
+  const tabs = document.getElementById('gtabs');
+  tabs.innerHTML = '';
+  const allTab = document.createElement('div');
+  allTab.className = 'gtab' + (activeGrp === -1 ? ' active' : '');
+  allTab.textContent = '全部';
+  allTab.onclick = () => { activeGrp = -1; renderTabs(); renderCards(); };
+  tabs.appendChild(allTab);
+  cat.groups.forEach((g, i) => {
+    const t = document.createElement('div');
+    t.className = 'gtab' + (activeGrp === i ? ' active' : '');
+    t.textContent = g.l;
+    t.onclick = () => { activeGrp = i; renderTabs(); renderCards(); };
+    tabs.appendChild(t);
+  });
+}
+
+// ─── CARDS ───────────────────────────────────
+function getVisibleTags() {
+  const cat = CATS.find(c => c.id === activeCat);
+  let tags = [];
+  if (activeGrp === -1) cat.groups.forEach(g => g.t.forEach(t => tags.push(t)));
+  else { const g = cat.groups[activeGrp]; if(g) g.t.forEach(t => tags.push(t)); }
+  if (q) { const ql = q.toLowerCase(); tags = tags.filter(t => t.e.toLowerCase().includes(ql) || t.z.includes(q)); }
+  return tags;
+}
+
+function renderCards() {
+  const cat = CATS.find(c => c.id === activeCat);
+  const grid = document.getElementById('grid');
+  const tags = getVisibleTags();
+  grid.innerHTML = '';
+  if (!tags.length) {
+    grid.innerHTML = '<div class="empty-res"><div class="ei">🔍</div><p>找不到符合詞彙</p></div>';
+    return;
+  }
+  tags.forEach(tag => {
+    const isSel = selected.some(s => s.e === tag.e);
+    const card = document.createElement('div');
+    card.className = 'card' + (isSel ? ' sel' : '');
+    card.style.setProperty('--c-active', cat.color);
+    card.dataset.e = tag.e;
+    card.innerHTML = `
+      <div class="card-img">
+        <img src="${imgUrl(tag.e)}" alt="${tag.e}" loading="lazy"
+          onload="this.classList.add('ok')"
+          onerror="this.parentElement.innerHTML='<div class=\\'card-ph\\'>${cat.icon}</div>'">
+      </div>
+      <div class="card-body">
+        <div class="card-en">${tag.e}</div>
+        <div class="card-zh">${tag.z}</div>
+      </div>`;
+    card.onclick = () => toggleTag(tag, cat);
+    grid.appendChild(card);
+  });
+}
+
+// ─── TOGGLE ──────────────────────────────────
+function toggleTag(tag, cat) {
+  const idx = selected.findIndex(s => s.e === tag.e);
+  if (idx >= 0) { selected.splice(idx, 1); toast(`移除：${tag.e}`); }
+  else { selected.push({e:tag.e,z:tag.z,catId:cat.id,color:cat.color}); toast(`加入：${tag.e}`); }
+  const card = document.querySelector(`.card[data-e="${CSS.escape(tag.e)}"]`);
+  if (card) card.classList.toggle('sel', selected.some(s=>s.e===tag.e));
+  renderHeader(); renderNav(); updatePromptBtn();
+  if (document.getElementById('sheet').classList.contains('open')) renderSheet();
+}
+
+function updatePromptBtn() {
+  const el = document.getElementById('navCnt');
+  if (selected.length > 0) { el.textContent = selected.length; el.classList.add('show'); }
+  else el.classList.remove('show');
+}
+
+// ─── SHEET ───────────────────────────────────
+function openSheet() {
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+  renderSheet();
+}
+function closeSheet() {
+  document.getElementById('sheet').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+function renderSheet() {
+  const body = document.getElementById('shBody');
+  const empty = document.getElementById('shEmpty');
+  document.getElementById('shSub').textContent = selected.length > 0 ? `已選 ${selected.length} 個詞彙` : '尚未選擇任何詞彙';
+  body.querySelectorAll('.sel-item').forEach(el => el.remove());
+  empty.style.display = selected.length === 0 ? 'block' : 'none';
+  document.getElementById('ptBox').textContent = selected.map(s=>s.e).join(', ');
+  selected.forEach(s => {
+    const item = document.createElement('div');
+    item.className = 'sel-item';
+    item.dataset.e = s.e;
+    item.innerHTML = `
+      <div class="sel-dot" style="background:${s.color}"></div>
+      <div class="sel-en">${s.e}</div>
+      <div class="sel-zh">${s.z}</div>
+      <button class="sel-rm" onclick="removeTag('${s.e.replace(/'/g,"\\'")}')">✕</button>`;
+    body.appendChild(item);
+  });
+  renderFavs();
+}
+
+function removeTag(e) {
+  selected = selected.filter(s => s.e !== e);
+  const card = document.querySelector(`.card[data-e="${CSS.escape(e)}"]`);
+  if (card) card.classList.remove('sel');
+  renderHeader(); renderNav(); updatePromptBtn(); renderSheet();
+}
+
+function clearAll() {
+  selected = [];
+  document.querySelectorAll('.card.sel').forEach(c => c.classList.remove('sel'));
+  renderHeader(); renderNav(); updatePromptBtn(); renderSheet();
+  toast('已清除全部詞彙');
+}
+
+function copyPrompt() {
+  if (!selected.length) { toast('⚠️ 請先選擇詞彙'); return; }
+  navigator.clipboard.writeText(selected.map(s=>s.e).join(', ')).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.classList.add('copied'); btn.textContent = '✓ 已複製！';
+    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '📋 複製 Prompt'; }, 2000);
+    toast('✓ 已複製到剪貼簿');
+  });
+}
+
+// ─── FAVS ────────────────────────────────────
+function saveFav() {
+  if (!selected.length) { toast('⚠️ 請先選擇詞彙'); return; }
+  const p = selected.map(s=>s.e).join(', ');
+  favs.unshift({ name: p.length>30 ? p.slice(0,30)+'…' : p, prompt: p, tags: selected.map(s=>({...s})) });
+  if (favs.length > 10) favs = favs.slice(0,10);
+  localStorage.setItem('aipb3_favs', JSON.stringify(favs));
+  renderFavs(); toast('⭐ 已儲存收藏');
+}
+function loadFav(fav) {
+  clearAll(); selected = fav.tags.map(t=>({...t}));
+  updatePromptBtn(); renderHeader(); renderNav(); renderCards(); renderSheet();
+  toast('✓ 已載入收藏組合');
+}
+function deleteFav(i, ev) {
+  ev.stopPropagation(); favs.splice(i,1);
+  localStorage.setItem('aipb3_favs', JSON.stringify(favs));
+  renderFavs();
+}
+function renderFavs() {
+  const list = document.getElementById('favList');
+  list.innerHTML = '';
+  if (!favs.length) { list.innerHTML = '<div class="fav-em">尚無收藏組合</div>'; return; }
+  favs.forEach((fav, i) => {
+    const row = document.createElement('div');
+    row.className = 'fav-row'; row.title = fav.prompt;
+    row.innerHTML = `<div class="fav-rn">${fav.name}</div><button class="fav-rd" onclick="deleteFav(${i},event)">✕</button>`;
+    row.onclick = ev => { if(ev.target.classList.contains('fav-rd')) return; loadFav(fav); };
+    list.appendChild(row);
+  });
+}
+
+// ─── RANDOM ──────────────────────────────────
+function addRandom() {
+  const cat = CATS.find(c => c.id === activeCat);
+  const all = []; cat.groups.forEach(g => g.t.forEach(t => all.push(t)));
+  const shuffled = all.sort(()=>Math.random()-0.5).slice(0,4);
+  shuffled.forEach(tag => {
+    if (!selected.find(s=>s.e===tag.e))
+      selected.push({e:tag.e,z:tag.z,catId:cat.id,color:cat.color});
+  });
+  renderCards(); renderHeader(); renderNav(); updatePromptBtn();
+  toast(`🎲 隨機加入詞彙`);
+}
+
+// ─── SEARCH ──────────────────────────────────
+document.getElementById('searchInput').addEventListener('input', function() {
+  q = this.value; activeGrp = q ? -1 : 0;
+  renderTabs(); renderCards();
+});
+
+// ─── TOAST ───────────────────────────────────
+let tt;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ─── INIT ────────────────────────────────────
+renderNav(); renderHeader(); renderTabs(); renderCards(); renderFavs();
+</script>
+</body>
+</html>
