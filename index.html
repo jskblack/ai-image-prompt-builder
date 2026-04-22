@@ -124,55 +124,72 @@ html,body{height:100%;overflow:hidden;background:var(--nav-bg);
 }
 .btn-rnd:hover{border-color:var(--nav-active);color:var(--nav-active)}
 
-/* card grid */
+/* card grid — hidden scrollbar, smooth scroll */
 .grid{
-  flex:1;overflow-y:auto;padding:8px 8px 80px;
-  display:grid;grid-template-columns:1fr 1fr;gap:7px;align-content:start;
-  scrollbar-width:thin;scrollbar-color:var(--border) transparent
+  flex:1;overflow-y:scroll;overflow-x:hidden;
+  padding:10px 10px 90px;
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch
 }
-.grid::-webkit-scrollbar{width:3px}
-.grid::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.grid::-webkit-scrollbar{display:none}
 
 /* style card */
 .card{
-  border-radius:11px;overflow:hidden;background:var(--white);
-  border:2px solid transparent;cursor:pointer;transition:all 0.18s;
-  position:relative;box-shadow:0 1px 4px rgba(0,0,0,0.07)
+  border-radius:14px;overflow:hidden;background:var(--white);
+  border:2.5px solid transparent;cursor:pointer;
+  transition:border-color 0.15s,box-shadow 0.15s,transform 0.12s;
+  position:relative;box-shadow:0 2px 8px rgba(0,0,0,0.09)
 }
-.card:active{transform:scale(0.97)}
-.card.sel{border-color:var(--c-active,var(--nav-active));box-shadow:0 0 0 2px rgba(45,107,191,0.12),0 2px 8px rgba(0,0,0,0.1)}
+.card:active{transform:scale(0.955)}
+.card.sel{
+  border-color:var(--c-active,var(--nav-active));
+  box-shadow:0 0 0 3px rgba(45,107,191,0.15),0 4px 14px rgba(0,0,0,0.12)
+}
 .card.sel::after{
-  content:'✓';position:absolute;top:5px;right:5px;
-  width:19px;height:19px;border-radius:50%;
+  content:'✓';position:absolute;top:7px;right:7px;
+  width:22px;height:22px;border-radius:50%;
   background:var(--c-active,var(--nav-active));color:#fff;
-  font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2
+  font-size:12px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;z-index:2;
+  box-shadow:0 2px 6px rgba(0,0,0,0.3)
 }
-.card-img{width:100%;aspect-ratio:4/3;overflow:hidden;background:var(--surface);position:relative}
+/* 1:1 image — big enough on mobile to see the style */
+.card-img{
+  width:100%;aspect-ratio:1/1;
+  overflow:hidden;background:var(--surface);position:relative
+}
 .card-img img{
   width:100%;height:100%;object-fit:cover;display:block;
-  opacity:0;transition:opacity 0.35s,transform 0.3s
+  opacity:0;transition:opacity 0.4s,transform 0.35s
 }
 .card-img img.ok{opacity:1}
-.card:hover .card-img img{transform:scale(1.04)}
+.card:active .card-img img{transform:scale(1.06)}
 .card-ph{
   width:100%;height:100%;display:flex;align-items:center;justify-content:center;
-  font-size:26px;opacity:0.35;
+  font-size:34px;opacity:0.28;
   background:linear-gradient(135deg,var(--surface) 0%,var(--border) 100%)
 }
-.card-body{padding:7px 8px 8px}
+.card-body{padding:9px 10px 11px}
 .card-en{
-  font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;
-  color:var(--text);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;
+  color:var(--text);line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden
 }
 .card-zh{
-  font-size:10px;color:var(--text-dim);margin-top:2px;line-height:1.3;
+  font-size:11px;color:var(--text-dim);margin-top:3px;line-height:1.35;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden
 }
 .empty-res{
-  grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--text-faint)
+  grid-column:1/-1;text-align:center;padding:52px 20px;color:var(--text-faint)
 }
-.empty-res .ei{font-size:38px;margin-bottom:10px}
-.empty-res p{font-size:12px}
+.empty-res .ei{font-size:40px;margin-bottom:12px}
+.empty-res p{font-size:13px}
+.show-more-notice{
+  grid-column:1/-1;text-align:center;padding:12px 16px;
+  background:var(--surface);border-radius:10px;
+  font-size:11.5px;color:var(--text-dim);border:1px solid var(--border)
+}
 
 /* ── SHEET ── */
 .overlay{
@@ -685,8 +702,12 @@ function getVisibleTags() {
 function renderCards() {
   const cat = CATS.find(c => c.id === activeCat);
   const grid = document.getElementById('grid');
-  const tags = getVisibleTags();
+  const allTags = getVisibleTags();
+  const MAX = 100;
+  const tags = allTags.slice(0, MAX);
   grid.innerHTML = '';
+  // scroll back to top on category/group switch
+  grid.scrollTop = 0;
   if (!tags.length) {
     grid.innerHTML = '<div class="empty-res"><div class="ei">🔍</div><p>找不到符合詞彙</p></div>';
     return;
@@ -710,6 +731,13 @@ function renderCards() {
     card.onclick = () => toggleTag(tag, cat);
     grid.appendChild(card);
   });
+  // show notice if results were trimmed
+  if (allTags.length > MAX) {
+    const notice = document.createElement('div');
+    notice.className = 'show-more-notice';
+    notice.textContent = `顯示前 ${MAX} 筆，共 ${allTags.length} 個詞彙，請使用搜尋縮小範圍`;
+    grid.appendChild(notice);
+  }
 }
 
 // ─── TOGGLE ──────────────────────────────────
